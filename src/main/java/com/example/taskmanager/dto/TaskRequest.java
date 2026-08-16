@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 public record TaskRequest(
         @NotBlank(message = "El titulo es obligatorio")
@@ -22,6 +23,11 @@ public record TaskRequest(
         TaskPriority priority,
 
         @NotNull(message = "La fecha limite es obligatoria")
-        LocalDate dueDate
+        LocalDate dueDate,
+
+        Set<Long> dependencyIds
 ) {
+    public TaskRequest(String title, String description, TaskStatus status, TaskPriority priority, LocalDate dueDate) {
+        this(title, description, status, priority, dueDate, Set.of());
+    }
 }

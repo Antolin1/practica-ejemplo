@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -180,5 +181,138 @@ class TaskServiceTest {
         ArgumentCaptor<Task> captor = ArgumentCaptor.forClass(Task.class);
         verify(taskRepository).delete(captor.capture());
         assertThat(captor.getValue().getId()).isEqualTo(3L);
+    }
+
+    @Test
+    void create_conDependenciasExistentes_seAsocianCorrectamente() {
+        Task dep1 = new Task("Base 1", "Desc", TaskStatus.DONE, TaskPriority.LOW, LocalDate.now().plusDays(1));
+        dep1.setId(1L);
+        Task dep2 = new Task("Base 2", "Desc", TaskStatus.DONE, TaskPriority.LOW, LocalDate.now().plusDays(1));
+        dep2.setId(2L);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(dep1));
+        when(taskRepository.findById(2L)).thenReturn(Optional.of(dep2));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskRequest request = new TaskRequest(
+                "Tarea con dependencias", "Desc", null, TaskPriority.MEDIUM,
+                LocalDate.now().plusDays(5), Set.of(1L, 2L)
+        );
+
+        Task created = taskService.create(request);
+
+        assertThat(created.getDependencies()).extracting(Task::getId).containsExactlyInAnyOrder(1L, 2L);
+    }
+
+    @Test
+    void create_conDependenciaInexistente_lanzaResourceNotFoundException() {
+        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
+
+        TaskRequest request = new TaskRequest(
+                "Tarea", "Desc", null, TaskPriority.LOW, LocalDate.now().plusDays(1), Set.of(99L)
+        );
+
+        assertThatThrownBy(() -> taskService.create(request))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void update_conAutoDependencia_lanzaExcepcion() {
+        Task existing = new Task("A", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5));
+        existing.setId(1L);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        TaskRequest request = new TaskRequest(
+                "A", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5), Set.of(1L)
+        );
+
+        assertThatThrownBy(() -> taskService.update(1L, request))
+                .isInstanceOf(InvalidTaskDataException.class)
+                .hasMessageContaining("ciclo");
+
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void update_conDependenciaCircularDirecta_lanzaExcepcion() {
+        Task taskA = new Task("A", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5));
+        taskA.setId(1L);
+        Task taskB = new Task("B", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5));
+        taskB.setId(2L);
+        taskB.setDependencies(Set.of(taskA));
+
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(taskA));
+        when(taskRepository.findById(2L)).thenReturn(Optional.of(taskB));
+
+        TaskRequest request = new TaskRequest(
+                "A", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5), Set.of(2L)
+        );
+
+        assertThatThrownBy(() -> taskService.update(1L, request))
+                .isInstanceOf(InvalidTaskDataException.class)
+                .hasMessageContaining("ciclo");
+
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void update_conDependenciaCircularTransitiva_lanzaExcepcion() {
+        Task taskX = new Task("X", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5));
+        taskX.setId(1L);
+        Task taskY = new Task("Y", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5));
+        taskY.setId(2L);
+        Task taskZ = new Task("Z", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5));
+        taskZ.setId(3L);
+
+        taskX.setDependencies(Set.of(taskY));
+        taskY.setDependencies(Set.of(taskZ));
+
+        when(taskRepository.findById(3L)).thenReturn(Optional.of(taskZ));
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(taskX));
+
+        TaskRequest request = new TaskRequest(
+                "Z", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5), Set.of(1L)
+        );
+
+        assertThatThrownBy(() -> taskService.update(3L, request))
+                .isInstanceOf(InvalidTaskDataException.class)
+                .hasMessageContaining("ciclo");
+
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void update_conDependenciaSinCiclo_seActualizaCorrectamente() {
+        Task existing = new Task("A", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5));
+        existing.setId(1L);
+        Task dependency = new Task("Base", "Desc", TaskStatus.DONE, TaskPriority.LOW, LocalDate.now().plusDays(1));
+        dependency.setId(2L);
+
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(taskRepository.findById(2L)).thenReturn(Optional.of(dependency));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskRequest request = new TaskRequest(
+                "A", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(5), Set.of(2L)
+        );
+
+        Task updated = taskService.update(1L, request);
+
+        assertThat(updated.getDependencies()).extracting(Task::getId).containsExactly(2L);
+    }
+
+    @Test
+    void delete_conTareaDeLaQueDependenOtras_lanzaExcepcion() {
+        Task existing = new Task("Base", "Desc", TaskStatus.PENDING, TaskPriority.LOW, LocalDate.now().plusDays(1));
+        existing.setId(5L);
+        when(taskRepository.findById(5L)).thenReturn(Optional.of(existing));
+        when(taskRepository.existsByDependenciesId(5L)).thenReturn(true);
+
+        assertThatThrownBy(() -> taskService.delete(5L))
+                .isInstanceOf(InvalidTaskDataException.class)
+                .hasMessageContaining("dependen");
+
+        verify(taskRepository, never()).delete(any());
     }
 }

@@ -7,12 +7,17 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Entity
 public class Task {
@@ -43,6 +48,14 @@ public class Task {
     @NotNull(message = "La fecha limite es obligatoria")
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
+
+    @ManyToMany
+    @JoinTable(
+            name = "task_dependencies",
+            joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "depends_on_task_id")
+    )
+    private Set<Task> dependencies = new HashSet<>();
 
     public Task() {
     }
@@ -101,6 +114,14 @@ public class Task {
 
     public void setDueDate(LocalDate dueDate) {
         this.dueDate = dueDate;
+    }
+
+    public Set<Task> getDependencies() {
+        return dependencies;
+    }
+
+    public void setDependencies(Set<Task> dependencies) {
+        this.dependencies = dependencies;
     }
 
     @Override

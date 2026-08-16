@@ -5,6 +5,8 @@ import com.example.taskmanager.model.TaskPriority;
 import com.example.taskmanager.model.TaskStatus;
 
 import java.time.LocalDate;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public record TaskResponse(
         Long id,
@@ -12,7 +14,8 @@ public record TaskResponse(
         String description,
         TaskStatus status,
         TaskPriority priority,
-        LocalDate dueDate
+        LocalDate dueDate,
+        Set<Long> dependencyIds
 ) {
     public static TaskResponse fromEntity(Task task) {
         return new TaskResponse(
@@ -21,7 +24,10 @@ public record TaskResponse(
                 task.getDescription(),
                 task.getStatus(),
                 task.getPriority(),
-                task.getDueDate()
+                task.getDueDate(),
+                task.getDependencies().stream()
+                        .map(Task::getId)
+                        .collect(Collectors.toSet())
         );
     }
 }
