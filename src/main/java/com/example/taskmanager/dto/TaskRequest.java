@@ -5,29 +5,25 @@ import com.example.taskmanager.model.TaskStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
 import java.time.LocalDate;
 import java.util.Set;
 
 public record TaskRequest(
-        @NotBlank(message = "El titulo es obligatorio")
+    @NotBlank(message = "El titulo es obligatorio")
         @Size(max = 100, message = "El titulo no puede superar los 100 caracteres")
         String title,
-
-        @Size(max = 500, message = "La descripcion no puede superar los 500 caracteres")
+    @Size(max = 500, message = "La descripcion no puede superar los 500 caracteres")
         String description,
-
-        TaskStatus status,
-
-        @NotNull(message = "La prioridad es obligatoria")
-        TaskPriority priority,
-
-        @NotNull(message = "La fecha limite es obligatoria")
-        LocalDate dueDate,
-
-        Set<Long> dependencyIds
-) {
-    public TaskRequest(String title, String description, TaskStatus status, TaskPriority priority, LocalDate dueDate) {
-        this(title, description, status, priority, dueDate, Set.of());
-    }
+    TaskStatus status,
+    @NotNull(message = "La prioridad es obligatoria") TaskPriority priority,
+    @NotNull(message = "La fecha limite es obligatoria") LocalDate dueDate,
+    Set<Long> dependencyIds) {
+  public TaskRequest(
+      String title,
+      String description,
+      TaskStatus status,
+      TaskPriority priority,
+      LocalDate dueDate) {
+    this(title, description, status, priority, dueDate, Set.of());
+  }
 }
