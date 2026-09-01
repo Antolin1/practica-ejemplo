@@ -3,6 +3,7 @@ package com.example.taskmanager.controller;
 import com.example.taskmanager.dto.TaskRequest;
 import com.example.taskmanager.dto.TaskResponse;
 import com.example.taskmanager.model.Task;
+import com.example.taskmanager.model.TaskStatus;
 import com.example.taskmanager.service.TaskService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,8 +30,9 @@ public class TaskController {
   }
 
   @GetMapping
-  public List<TaskResponse> getAll() {
-    return taskService.findAll().stream().map(TaskResponse::fromEntity).toList();
+  public List<TaskResponse> getAll(@RequestParam(required = false) TaskStatus status) {
+    List<Task> tasks = status != null ? taskService.findByStatus(status) : taskService.findAll();
+    return tasks.stream().map(TaskResponse::fromEntity).toList();
   }
 
   @GetMapping("/{id}")
