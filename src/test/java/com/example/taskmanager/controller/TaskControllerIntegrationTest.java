@@ -232,6 +232,28 @@ class TaskControllerIntegrationTest {
   }
 
   @Test
+  void obtenerTareas_filtrandoPorStatus_devuelveSoloLasQueCoinciden() throws Exception {
+    crearTarea(
+        new TaskRequest(
+            "Tarea pendiente", "desc", null, TaskPriority.LOW, LocalDate.now().plusDays(1)));
+    Long enProgresoId =
+        crearTarea(
+            new TaskRequest(
+                "Tarea en progreso",
+                "desc",
+                TaskStatus.IN_PROGRESS,
+                TaskPriority.MEDIUM,
+                LocalDate.now().plusDays(1)));
+
+    mockMvc
+        .perform(get("/api/tasks").param("status", "IN_PROGRESS"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(1)))
+        .andExpect(jsonPath("$[0].id").value(enProgresoId))
+        .andExpect(jsonPath("$[0].status").value("IN_PROGRESS"));
+  }
+
+  @Test
   void borrarTarea_conOtrasTareasQueDependenDeElla_devuelve400() throws Exception {
     Long baseId =
         crearTarea(
