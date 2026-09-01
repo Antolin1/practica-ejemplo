@@ -1,0 +1,13 @@
+{
+  "name": "tareas-api",
+  "image": "mcr.microsoft.com/devcontainers/java:21",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": { "installMaven": "true" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": false }
+  },
+  "forwardPorts": [8080, 5432],
+  "postCreateCommand": "git config core.hooksPath .githooks && mvn -B dependency:go-offline",
+  "customizations": {
+    "vscode": { "extensions": ["vscjava.vscode-java-pack", "ms-azuretools.vscode-docker"] }
+  }
+}
