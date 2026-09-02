@@ -51,11 +51,11 @@ public class Task {
   @ManyToMany
   @JoinTable(
       name = "task_dependencies",
-      joinColumns = @JoinColumn(name = "task_id"),
-      inverseJoinColumns = @JoinColumn(name = "depends_on_task_id"))
-  private Set<Task> dependencies = new HashSet<>();
+joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "depends_on_task_id"))
+    private Set<Task> dependencies = new HashSet<>();
 
-  public Task() {}
+    public Task() {}
 
   public Task(
       String title,
