@@ -15,16 +15,45 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Configurar JDK 21
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21", cache: maven }
+      - name: Comprobar formato
+        run: mvn -B spotless:check      # el Spotless del Boletín 1
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21", cache: maven }
+      - name: Tests
+        run: mvn -B verify
+      - name: Publicar informe de tests
+        if: always()                    
+        uses: dorny/test-reporter@v1
         with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-      - name: Construir y testear
-        run: mvn --batch-mode verify
+          name: Resultados JUnit
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21", cache: maven }
+      - run: mvn -B package -DskipTests
+      - name: Subir JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
+          retention-days: 7
