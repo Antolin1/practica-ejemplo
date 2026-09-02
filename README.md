@@ -1,5 +1,8 @@
 # task-manager
 
+
+[![CI](https://github.com/Antolin1/practica-ejemplo/actions/workflows/ci.yml/badge.svg)](https://github.com/Antolin1/practica-ejemplo/actions/workflows/ci.yml)
+
 API REST de gestión de tareas con Spring Boot 3 y Java 21.
 
 ## Requisitos
