@@ -43,6 +43,17 @@ jobs:
           path: target/surefire-reports/*.xml
           reporter: java-junit
 
+      # always(): interesa el informe sobre todo cuando la build falla
+      # por no alcanzar el umbral de cobertura de JaCoCo
+      - name: Subir informe de cobertura (JaCoCo)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          retention-days: 7
+          if-no-files-found: warn
+
   package:
     needs: test
     runs-on: ubuntu-latest
