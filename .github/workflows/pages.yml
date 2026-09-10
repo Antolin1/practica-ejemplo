@@ -1,0 +1,54 @@
+name: Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:        # permite lanzar la publicación a mano desde la pestaña Actions
+
+# Permisos mínimos: leer el código, publicar en Pages y pedir el token OIDC del despliegue
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un solo despliegue a la vez. Aquí NO se cancela el que está en curso:
+# interrumpir una publicación a medias puede dejar el sitio inconsistente.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generar el sitio a partir de los .md
+        run: python3 docs/generar_html.py --salida docs/site
+
+      - name: Comprobar que se generó el índice
+        run: test -f docs/site/index.html
+
+      - uses: actions/configure-pages@v5
+
+      - name: Empaquetar el sitio
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
