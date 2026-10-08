@@ -1,5 +1,9 @@
 target/
 .git/
 .idea/
+.vscode/
+.devcontainer/
 *.md
 deploy/
+.env
+docker-compose*.yml

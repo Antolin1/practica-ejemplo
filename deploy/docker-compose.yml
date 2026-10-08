@@ -1,0 +1,25 @@
+# deploy/servidores/docker-compose.yml
+# Simula tu infraestructura: NO tiene nada que ver con el docker-compose.yml
+# de la app (Boletín 3). Esto son las "máquinas" a las que Ansible se conectará por SSH.
+services:
+  app1:
+    image: rastasheep/ubuntu-sshd:18.04   # Ubuntu con sshd ya arrancado
+    container_name: app1
+    privileged: true                      # necesario: dentro correrá su propio Docker
+    ports:
+      - "2223:22"
+      - "8081:8080"   # aquí quedará la API una vez desplegada dentro
+
+  app2:
+    image: rastasheep/ubuntu-sshd:18.04
+    container_name: app2
+    privileged: true
+    ports:
+      - "2224:22"
+      - "8082:8080"
+
+  db1:
+    image: rastasheep/ubuntu-sshd:18.04
+    container_name: db1
+    privileged: true
+    ports: [ "2225:22" ]   # el 5432 NO se publica: la BD solo debe ser visible desde app, no desde fuera

@@ -67,3 +67,6 @@ Una vez arrancada, se puede comprobar el estado en:
 ```
 GET http://localhost:8080/actuator/health
 ```
+
+
+ME quedé en la parte D (justo antes, no la empecé). Hay que revistar lo que dice el boletín

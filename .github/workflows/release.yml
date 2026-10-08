@@ -13,6 +13,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -41,3 +43,13 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+  deploy-production:
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: produccion
+    steps:
+      - name: Desplegar en producción
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          echo "... Desplegando en producción la versión $VERSION ..."
