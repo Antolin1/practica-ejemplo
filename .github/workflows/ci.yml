@@ -13,6 +13,8 @@ concurrency:
 # Mínimo privilegio: este workflow solo necesita leer el código
 permissions:
   contents: read
+  actions: read
+  checks: write
 
 jobs:
   lint:
@@ -37,7 +39,7 @@ jobs:
         run: mvn -B verify
       - name: Publicar informe de tests
         if: always()                    
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         with:
           name: Resultados JUnit
           path: target/surefire-reports/*.xml
