@@ -19,10 +19,11 @@ public record TaskRequest(
     @NotNull(message = "La fecha limite es obligatoria") LocalDate dueDate,
     Set<Long> dependencyIds) {
   public TaskRequest(
-String title,
-        String description,
-            TaskStatus status,
+      String title,
+      String description,
+      TaskStatus status,
       TaskPriority priority,
-      LocalDate dueDate) { this(title, description, status, priority, dueDate, Set.of());
+      LocalDate dueDate) {
+    this(title, description, status, priority, dueDate, Set.of());
   }
 }
