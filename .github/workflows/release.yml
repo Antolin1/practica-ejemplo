@@ -44,14 +44,29 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-  # al final no se lo he pedido en los boletines? quizá en Ansible
-  deploy-production:
-    needs: publish
-    runs-on: ubuntu-latest
-    environment: produccion
+          
+  # NUEVO: todo lo que sigue es lo que añades en esta parte
+  deploy:
+    needs: publish                                  # solo si la imagen se publicó bien
+    # solo al publicar una versión (tag vX.Y.Z), no en cada push a main
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: self-hosted                            # tu ordenador
+    environment: produccion                         # se detiene aquí hasta que un reviewer lo apruebe
+    timeout-minutes: 15
     steps:
-      - name: Desplegar en producción
+      - uses: actions/checkout@v4
+
+      - name: Instalar la collection de Ansible
+        run: ansible-galaxy collection install -r deploy/requirements.yml
+
+      - name: Desplegar con Ansible
         env:
+          VAULT_PASS: ${{ secrets.VAULT_PASS }}
           VERSION: ${{ needs.publish.outputs.version }}
         run: |
-          echo "... Desplegando en producción la versión $VERSION ..."
+          VAULT_FILE="$(mktemp)"
+          trap 'rm -f "$VAULT_FILE"' EXIT
+          printf '%s' "$VAULT_PASS" > "$VAULT_FILE"
+          ansible-playbook -i deploy/inventory.ini deploy/deploy.yml \
+            --vault-password-file "$VAULT_FILE" \
+            --extra-vars "version_app=$VERSION"

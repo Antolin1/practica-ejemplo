@@ -1,0 +1,78 @@
+- name: Preparar Docker en toda la flota
+  hosts: servidores
+  tasks:
+    - name: Instalar Docker y el SDK de Python
+      apt:
+        name: [ docker.io, python3-docker ]
+        state: present
+        update_cache: true
+
+    - name: Arrancar dockerd (los contenedores no tienen systemd)
+      shell: |
+        nohup dockerd > /var/log/dockerd.log 2>&1 &
+        for i in $(seq 1 30); do docker info >/dev/null 2>&1 && exit 0; sleep 1; done
+        cat /var/log/dockerd.log
+        exit 1
+      args:
+        creates: /var/run/docker.pid
+        
+- name: Desplegar la base de datos
+  hosts: db
+  tasks:
+    - name: Base de datos PostgreSQL
+      community.docker.docker_container:
+        name: tareas-db
+        image: postgres:16
+        state: started
+        restart_policy: always
+        network_mode: host              # accesible como "{{ inventory_hostname }}:5432" desde app
+        volumes: [ "tareas-db-data:/var/lib/postgresql/data" ]
+        env:
+          POSTGRES_DB: "{{ db_name }}"
+          POSTGRES_USER: "{{ db_user }}"
+          POSTGRES_PASSWORD: "{{ db_pass }}"
+        healthcheck:
+          test: [ "CMD-SHELL", "pg_isready -U {{ db_user }}" ]
+          interval: 5s
+          retries: 10
+
+- name: Desplegar la API de tareas
+  hosts: app
+  vars:
+    version_app: "1.0.0"                                   # se sobreescribe desde el CI
+    imagen: "ghcr.io/antolin1/practica-ejemplo:{{ version_app }}"
+    host_bd: "{{ groups['db'][0] }}"                        # primer host del grupo db
+
+  tasks:
+    - name: Login en GHCR
+      community.docker.docker_login:
+        registry_url: ghcr.io
+        username: "{{ ghcr_user }}"
+        password: "{{ ghcr_token }}"
+
+    - name: Descargar la imagen de la aplicación
+      community.docker.docker_image:
+        name: "{{ imagen }}"
+        source: pull
+
+    - name: Arrancar el contenedor de la API
+      community.docker.docker_container:
+        name: tareas-api
+        image: "{{ imagen }}"
+        state: started
+        recreate: false          # idempotencia: no lo toca si ya es esta versión
+        restart_policy: always
+        network_mode: host       # comparte red con esta máquina: así ve a "{{ host_bd }}" por su nombre
+        env:
+          SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ host_bd }}:5432/{{ db_name }}"
+          SPRING_DATASOURCE_USERNAME: "{{ db_user }}"
+          SPRING_DATASOURCE_PASSWORD: "{{ db_pass }}"
+
+    - name: Smoke test — esperar a que la API esté sana
+      uri:
+        url: "http://localhost:8080/actuator/health"
+        status_code: 200
+      register: salud
+      retries: 20
+      delay: 5
+      until: salud.json.status is defined and salud.json.status == "UP"
